@@ -143,20 +143,22 @@
             </div>
             
             <div style="margin-top: 10px; background: #f0f2f5; padding: 15px; border-radius: 10px;">
-                <strong>Local Video:</strong>
+                <strong>🎬 All Participants Video:</strong>
                 <div class="controls">
                     <button id="muteBtn" class="control-btn mute-btn" onclick="toggleMute()">🎤 Microphone</button>
                     <button id="videoBtn" class="control-btn video-btn" onclick="toggleVideo()">📹 Camera</button>
                     <button class="control-btn" onclick="shareScreen()" style="background-color: #6f42c1;">🖥️ Share Screen</button>
                 </div>
-                <div style="text-align: center; margin-top: 10px;">
-                    <video id="localVideo" autoplay muted style="width: 320px; height: 240px; border: 3px solid #007cba; border-radius: 8px; margin: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);"></video>
+                <div id="allVideos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; padding: 15px; margin-top: 10px;">
+                    <!-- Local video will be added here -->
+                    <div id="localVideoContainer" style="margin: 10px; text-align: center; background: #ffffff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);">
+                        <video id="localVideo" autoplay muted style="width: 320px; height: 240px; border: 3px solid #007cba; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);"></video>
+                        <div style="font-size: 14px; font-weight: bold; margin-top: 8px; color: #495057; background: #e3f2fd; padding: 5px 10px; border-radius: 15px; display: inline-block; border: 1px solid #007cba;">
+                            👤 You (Local)
+                        </div>
+                    </div>
+                    <!-- Remote videos will be added here -->
                 </div>
-            </div>
-            
-            <div style="margin-top: 10px;">
-                <strong>Remote Videos:</strong><br>
-                <div id="remotes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; padding: 15px; background: #f0f2f5; border-radius: 10px; margin-top: 10px;"></div>
             </div>
             
             <!-- Text Chat -->
@@ -191,7 +193,8 @@
         let isAudioMuted = false;
         let isVideoDisabled = false;
         let userCount = 0;
-        let connectedUsers = []; // Бөлмөдөгү колдонуучулар тизмеси        // WebRTC configuration
+        let connectedUsers = []; // Бөлмөдөгү колдонуучулар тизмеси
+        let userNames = {}; // User ID to username mapping        // WebRTC configuration
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' }
@@ -258,6 +261,9 @@
             log(`👥 ${data.username} joined the room`);
             addChatMessage('System', `${data.username} joined the room`, 'system');
             
+            // Store username mapping
+            userNames[data.userId] = data.username;
+            
             // Add user to connected users list
             connectedUsers.push({ id: data.userId, username: data.username });
             userCount++;
@@ -273,6 +279,9 @@
         socket.on('user-left', (data) => {
             log(`👋 ${data.username} left the room`);
             addChatMessage('System', `${data.username} left the room`, 'system');
+            
+            // Remove username mapping
+            delete userNames[data.userId];
             
             // Remove user from connected users list
             connectedUsers = connectedUsers.filter(user => user.id !== data.userId);
@@ -390,7 +399,8 @@
             peerConnection.ontrack = (event) => {
                 log(`🎬 Received video from ${peerId}`);
                 remoteStreams[peerId] = event.streams[0];
-                addRemoteVideo(peerId, event.streams[0]);
+                const username = userNames[peerId];
+                addRemoteVideo(peerId, event.streams[0], username);
             };
             
             // Listen for ICE candidates
@@ -481,16 +491,16 @@
         }
         
         // Add remote video
-        function addRemoteVideo(peerId, stream) {
+        function addRemoteVideo(peerId, stream, username) {
             // Remove previous video
             removeRemoteVideo(peerId);
             
-            const remoteContainer = document.getElementById('remotes');
+            const allVideosContainer = document.getElementById('allVideos');
             const videoContainer = document.createElement('div');
             videoContainer.id = `video-${peerId}`;
             videoContainer.style.margin = '10px';
             videoContainer.style.textAlign = 'center';
-            videoContainer.style.backgroundColor = '#f8f9fa';
+            videoContainer.style.backgroundColor = '#ffffff';
             videoContainer.style.padding = '10px';
             videoContainer.style.borderRadius = '10px';
             videoContainer.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
@@ -505,20 +515,21 @@
             video.srcObject = stream;
             
             const label = document.createElement('div');
-            label.textContent = `User ${peerId.substring(0, 8)}`;
+            const displayName = username || `User ${peerId.substring(0, 8)}`;
+            label.textContent = `👥 ${displayName}`;
             label.style.fontSize = '14px';
             label.style.fontWeight = 'bold';
             label.style.marginTop = '8px';
             label.style.color = '#495057';
-            label.style.backgroundColor = '#ffffff';
+            label.style.backgroundColor = '#d4edda';
             label.style.padding = '5px 10px';
             label.style.borderRadius = '15px';
             label.style.display = 'inline-block';
-            label.style.border = '1px solid #dee2e6';
+            label.style.border = '1px solid #28a745';
             
             videoContainer.appendChild(video);
             videoContainer.appendChild(label);
-            remoteContainer.appendChild(videoContainer);
+            allVideosContainer.appendChild(videoContainer);
         }
         
         // Remove remote video
