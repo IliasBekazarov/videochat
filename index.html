@@ -131,9 +131,15 @@
                 <button onclick="joinRoom()">Join Room</button>
             </div>
             
-            <div id="roomInfo" class="room-info" style="display: none;">
+                        <div id="roomInfo" class="room-info" style="display: none;">
                 <div>Room: <strong id="currentRoomName"></strong></div>
                 <div>Participants: <span id="userCount" class="user-count">0</span></div>
+                <div style="margin-top: 10px;">
+                    <strong>Users in room:</strong>
+                    <div id="userList" style="max-height: 100px; overflow-y: auto; background: #f8f9fa; padding: 5px; border-radius: 3px; margin-top: 5px;">
+                        <div style="color: #666; font-style: italic;">No users connected</div>
+                    </div>
+                </div>
             </div>
             
             <div style="margin-top: 10px;">
@@ -174,17 +180,16 @@
         // Socket.IO connection
         const socket = io();
         
-        // Global variables
+        // Глобалдык өзгөрмөлөр
         let localStream = null;
         let currentUsername = '';
         let currentRoom = '';
-        let peerConnections = {}; // For multiple users
+        let peerConnections = {}; // Көп колдонуучу үчүн
         let remoteStreams = {};
         let isAudioMuted = false;
         let isVideoDisabled = false;
         let userCount = 0;
-        
-        // WebRTC configuration
+        let connectedUsers = []; // Бөлмөдөгү колдонуучулар тизмеси        // WebRTC configuration
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' }
@@ -226,9 +231,11 @@
         });
         
         socket.on('room-users', (data) => {
-            log(`👥 ${data.users.length} users in room`);
+            log(`👥 Room has ${data.users.length} users`);
             userCount = data.users.length + 1; // +1 for ourselves
+            connectedUsers = [...data.users, { id: socket.id, username: currentUsername }];
             updateUserCount();
+            updateUserList();
             
             // Create connections with existing users
             data.users.forEach(user => {
@@ -238,11 +245,22 @@
             });
         });
         
+        // Handle users list update
+        socket.on('users-in-room', (users) => {
+            console.log('Users in room updated:', users);
+            connectedUsers = users;
+            updateUserList();
+        });
+
         socket.on('user-joined', async (data) => {
             log(`👥 ${data.username} joined the room`);
             addChatMessage('System', `${data.username} joined the room`, 'system');
+            
+            // Add user to connected users list
+            connectedUsers.push({ id: data.userId, username: data.username });
             userCount++;
             updateUserCount();
+            updateUserList();
             
             // Send offer to new user
             if (localStream) {
@@ -253,8 +271,12 @@
         socket.on('user-left', (data) => {
             log(`👋 ${data.username} left the room`);
             addChatMessage('System', `${data.username} left the room`, 'system');
+            
+            // Remove user from connected users list
+            connectedUsers = connectedUsers.filter(user => user.id !== data.userId);
             userCount--;
             updateUserCount();
+            updateUserList();
             
             // Close peer connection
             if (peerConnections[data.userId]) {
@@ -546,6 +568,36 @@
         // Update user count
         function updateUserCount() {
             document.getElementById('userCount').textContent = userCount;
+        }
+        
+        // Update user list
+        function updateUserList() {
+            const userListDiv = document.getElementById('userList');
+            
+            if (connectedUsers.length === 0) {
+                userListDiv.innerHTML = '<div style="color: #666; font-style: italic;">No users connected</div>';
+                return;
+            }
+            
+            let usersHtml = '';
+            connectedUsers.forEach(user => {
+                const isMe = user.id === socket.id;
+                const statusIcon = isMe ? '👤' : '👥';
+                const statusDot = '<span style="color: #28a745; font-size: 8px;">●</span>'; // Green dot for online
+                const nameStyle = isMe ? 'font-weight: bold; color: #007cba;' : 'color: #333;';
+                const suffix = isMe ? ' (You)' : '';
+                
+                usersHtml += `
+                    <div style="padding: 3px 8px; margin: 2px 0; background: ${isMe ? '#e3f2fd' : '#fff'}; border-radius: 4px; ${nameStyle} border-left: 3px solid ${isMe ? '#007cba' : '#28a745'};">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>${statusIcon} ${user.username}${suffix}</span>
+                            <span>${statusDot} Online</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            userListDiv.innerHTML = usersHtml;
         }
         
         // Toggle microphone

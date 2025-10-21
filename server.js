@@ -33,43 +33,30 @@ io.on('connection', (socket) => {
     });
     
     // Бөлмөгө кошулуу
-    socket.on('join-room', (data) => {
-        const { room, username } = data;
-        socket.join(room);
-        socket.room = room;
-        socket.username = username;
-        
-        // Бөлмөгө колдонуучуну кошуу
-        if (!rooms[room]) {
-            rooms[room] = [];
-        }
-        rooms[room].push({
-            id: socket.id,
-            username: username
-        });
-        
-        console.log(`${username} ${room} бөлмөсүнө кошулду`);
-        
-        // Өзүнө ырастоо
-        socket.emit('joined-room', { 
-            room, 
-            username,
-            message: `${room} бөлмөсүнө кош келдиңиз!`
-        });
-        
-        // Бөлмөдөгү колдонуучулардын тизмесин жөнөтүү
-        socket.emit('room-users', {
-            users: rooms[room].filter(user => user.id !== socket.id)
-        });
-        
-        // Башка колдонуучуларга билдирүү
-        socket.to(room).emit('user-joined', { 
-            userId: socket.id, 
-            username: username 
-        });
-    });
+  socket.on('join-room', (roomId, username) => {
+    console.log(`User ${username} joined room ${roomId}`);
     
-    // Текст билдирүү
+    if (!rooms[roomId]) {
+      rooms[roomId] = [];
+    }
+    
+    rooms[roomId].push({ id: socket.id, username: username });
+    socket.roomId = roomId;
+    socket.username = username;
+    
+    socket.join(roomId);
+    
+    // Send current users list to the new user
+    socket.emit('users-in-room', rooms[roomId]);
+    
+    // Notify others in the room about new user
+    socket.to(roomId).emit('user-joined', { userId: socket.id, username: username });
+    
+    // Send updated users list to all users in room
+    io.to(roomId).emit('users-in-room', rooms[roomId]);
+    
+    console.log(`Room ${roomId} now has ${rooms[roomId].length} users`);
+  });    // Текст билдирүү
     socket.on('chat-message', (data) => {
         if (socket.room) {
             // Бөлмөдөгү башкаларга жөнөтүү
@@ -106,25 +93,25 @@ io.on('connection', (socket) => {
     });
     
     // Ажыратуу
-    socket.on('disconnect', () => {
-        console.log('Колдонуучу чыкты:', socket.id);
-        
-        if (socket.room && rooms[socket.room]) {
-            // Бөлмөдөн алып салуу
-            rooms[socket.room] = rooms[socket.room].filter(user => user.id !== socket.id);
-            
-            // Эгер бөлмө бош болсо, аны өчүрүү
-            if (rooms[socket.room].length === 0) {
-                delete rooms[socket.room];
-            }
-            
-            // Башкаларга билдирүү
-            socket.to(socket.room).emit('user-left', {
-                userId: socket.id,
-                username: socket.username
-            });
-        }
-    });
+      socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    
+    if (socket.roomId && rooms[socket.roomId]) {
+      // Remove user from room
+      rooms[socket.roomId] = rooms[socket.roomId].filter(user => user.id !== socket.id);
+      
+      if (rooms[socket.roomId].length === 0) {
+        delete rooms[socket.roomId];
+        console.log(`Room ${socket.roomId} deleted (no users left)`);
+      } else {
+        // Notify others about user leaving
+        socket.to(socket.roomId).emit('user-left', { userId: socket.id, username: socket.username });
+        // Send updated users list to remaining users
+        io.to(socket.roomId).emit('users-in-room', rooms[socket.roomId]);
+        console.log(`User ${socket.username} left room ${socket.roomId}. ${rooms[socket.roomId].length} users remaining`);
+      }
+    }
+  });
 });
 
 // Серверди баштоо
