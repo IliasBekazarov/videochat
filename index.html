@@ -142,19 +142,21 @@
                 </div>
             </div>
             
-            <div style="margin-top: 10px;">
+            <div style="margin-top: 10px; background: #f0f2f5; padding: 15px; border-radius: 10px;">
                 <strong>Local Video:</strong>
                 <div class="controls">
                     <button id="muteBtn" class="control-btn mute-btn" onclick="toggleMute()">🎤 Microphone</button>
                     <button id="videoBtn" class="control-btn video-btn" onclick="toggleVideo()">📹 Camera</button>
                     <button class="control-btn" onclick="shareScreen()" style="background-color: #6f42c1;">🖥️ Share Screen</button>
                 </div>
-                <video id="localVideo" autoplay muted style="width: 200px; height: 150px; border: 2px solid #007cba; border-radius: 5px; margin: 5px;"></video>
+                <div style="text-align: center; margin-top: 10px;">
+                    <video id="localVideo" autoplay muted style="width: 320px; height: 240px; border: 3px solid #007cba; border-radius: 8px; margin: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);"></video>
+                </div>
             </div>
             
             <div style="margin-top: 10px;">
                 <strong>Remote Videos:</strong><br>
-                <div id="remotes" style="display: flex; flex-wrap: wrap;"></div>
+                <div id="remotes" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 15px; padding: 15px; background: #f0f2f5; border-radius: 10px; margin-top: 10px;"></div>
             </div>
             
             <!-- Text Chat -->
@@ -486,21 +488,33 @@
             const remoteContainer = document.getElementById('remotes');
             const videoContainer = document.createElement('div');
             videoContainer.id = `video-${peerId}`;
-            videoContainer.style.margin = '5px';
+            videoContainer.style.margin = '10px';
             videoContainer.style.textAlign = 'center';
+            videoContainer.style.backgroundColor = '#f8f9fa';
+            videoContainer.style.padding = '10px';
+            videoContainer.style.borderRadius = '10px';
+            videoContainer.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
             
             const video = document.createElement('video');
             video.autoplay = true;
-            video.style.width = '200px';
-            video.style.height = '150px';
-            video.style.border = '2px solid #28a745';
-            video.style.borderRadius = '5px';
+            video.style.width = '320px';
+            video.style.height = '240px';
+            video.style.border = '3px solid #28a745';
+            video.style.borderRadius = '8px';
+            video.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
             video.srcObject = stream;
             
             const label = document.createElement('div');
             label.textContent = `User ${peerId.substring(0, 8)}`;
-            label.style.fontSize = '12px';
-            label.style.marginTop = '5px';
+            label.style.fontSize = '14px';
+            label.style.fontWeight = 'bold';
+            label.style.marginTop = '8px';
+            label.style.color = '#495057';
+            label.style.backgroundColor = '#ffffff';
+            label.style.padding = '5px 10px';
+            label.style.borderRadius = '15px';
+            label.style.display = 'inline-block';
+            label.style.border = '1px solid #dee2e6';
             
             videoContainer.appendChild(video);
             videoContainer.appendChild(label);
